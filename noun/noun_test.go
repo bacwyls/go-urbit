@@ -56,6 +56,93 @@ func TestMakeNoun(t *testing.T) {
 	}
 }
 
+func TestFas(t *testing.T) {
+	a := []interface{}{12, 16, 19, 23}
+	b := []interface{}{13, 17, 20, 24}
+	n := MakeNoun([]interface{}{a, b})
+	s4 := Fas(4, n)
+
+	if s4.String() != "12" {
+		t.Errorf("expected 12 got %s", s4)
+	}
+
+	s5 := Fas(5, n)
+	s5_truth := "[16 19 23]"
+	if s5.String() != s5_truth {
+		t.Errorf("expected %s got %s", s5_truth, s5)
+	}
+
+	s10 := Fas(10, n)
+	if s10.String() != "16" {
+		t.Errorf("expected 16 got %s", s10)
+	}
+
+	s6 := Fas(6, n)
+	if s6.String() != "13" {
+		t.Errorf("expected 13 got %s", s6)
+	}
+
+	s14 := Fas(14, n)
+	if s14.String() != "17" {
+		t.Errorf("expected 17 got %s", s14)
+	}
+
+}
+
+func TestHax(t *testing.T) {
+	a := []interface{}{12, 16, 19, 23}
+	b := []interface{}{13, 17, 20, 24}
+	n := MakeNoun([]interface{}{a, b})
+
+	r := 33
+
+	h5 := Hax(5, MakeNoun(r), n)
+	amod := []interface{}{12, r}
+	h5_truth := MakeNoun([]interface{}{amod, b})
+	if h5.String() != h5_truth.String() {
+		t.Errorf("expected %s got %s", h5_truth, h5)
+	}
+
+	h7 := Hax(7, MakeNoun(r), n)
+	bmod := []interface{}{13, r}
+	h7_truth := MakeNoun([]interface{}{a, bmod})
+	if h7.String() != h7_truth.String() {
+		t.Errorf("expected %s got %s", h7_truth, h7)
+	}
+
+	/*
+		//	debugging hax TODO remove
+			n = MakeNoun([]interface{}{55, []interface{}{66, 77}, 88})
+			//	alt := MakeNoun([]interface{}{55, []interface{}{66, 33}, 88})
+			n = MakeNoun([]interface{}{n, n})
+			h13 := Hax(20, MakeNoun(r), n)
+			if h13.String() != "" {
+				t.Errorf("expected %s got %s", h7_truth, h13)
+			}
+	*/
+
+}
+
+func TestNounFromString(t *testing.T) {
+	a := []interface{}{12, 16, 19, 23}
+	b := []interface{}{13, 17, 20, 24}
+	n := MakeNoun([]interface{}{a, b})
+	ns := NounFromString(n.String())
+
+	if ns.String() != n.String() {
+		t.Errorf("expected %s got %s", n.String(), ns.String())
+	}
+
+	// a sample landscape dm
+	// coverage for bigints and deeper nesting
+	dm := "[170141184505687446085187436250516160512 2128681655491098862689 [101844224 8678263233316744548] [[11093637012246365440 170141184505687446085091054714890804527 0] [0 101844224 [11093637012246365440 170141184505687446085091054714890804527 0] 170141184505687446085091054714890804527 [[1954047348 5018395299700377944449393971777] 0] [0 49678085277749340053015205300505906542] [1430383508112382614187095719319023241763957391717204612572259633867244619751332669867972417882692126456701976374054689233573579725316335638796765440959819871434272292658192524339426869369119827168292865 101844224 1] 0 0] 521644567909 0] 0 0]"
+	dmn := NounFromString(dm)
+	if dmn.String() != dm {
+		t.Errorf("expected %s got %s", dm, dmn.String())
+	}
+
+}
+
 func TestJam(t *testing.T) {
 	n1 := MakeNoun([]interface{}{12, 16})
 	r1 := Jam(n1)

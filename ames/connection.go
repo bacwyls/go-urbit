@@ -103,7 +103,7 @@ func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 	// this prevents bone and message num conflicts
 	if c.ames.breach == true {
 		// breach with helm-moon-breach
-		_, err := c.Request(
+		_, err = c.Request(
 			[]string{"ge", "hood"},
 			"helm-moon-breach",
 			noun.MakeNoun(c.ames.Ship),
@@ -113,7 +113,7 @@ func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 		}
 	}
 	// delay for zod to catch up
-	time.Sleep(2 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// ping zod after breach
 	err = ames.initZod()
@@ -241,10 +241,13 @@ func (a *Ames) GenerateSymKey(encryptionKey string) []byte {
 
 // Request sends a mark and data (noun) to a connected ship
 func (c *Connection) Request(path []string, mark string, data noun.Noun) ([]byte, error) {
+	fmt.Println("sending a request!")
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	pkt, err := c.CreatePacket(path, mark, data)
+	fmt.Println("size of packet: ", len(pkt))
 	c.num++
 	if err != nil {
 		return nil, err
@@ -254,10 +257,16 @@ func (c *Connection) Request(path []string, mark string, data noun.Noun) ([]byte
 }
 
 func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([]byte, error) {
+	fmt.Println("  data: ", data)
 	poke := ConstructPoke(path, mark, data)
+	fmt.Println("  poke: ", poke)
 	msg := SplitMessage(c.num, poke)
 	// TODO: create each packet vs msg[0]
+
+	fmt.Println("  msg[0]: ", msg[0])
+	fmt.Println("  c.bone: ", c.bone)
 	pat := FragmentToShutPacket(msg[0], c.bone)
+	fmt.Println("     pat: ", pat)
 	pack, err := EncodeShutPacket(pat, c.Peer.symKey, c.ames.Ship, c.Peer.ship, c.ames.Life, c.Peer.life)
 	if err != nil {
 		return []byte{}, err
@@ -288,7 +297,7 @@ func (a *Ames) handleConn() {
 		}
 		packet, c, err := a.ParsePacket(buf)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("error: handleConnA", err)
 			return
 		}
 		// if res is from zod
@@ -308,6 +317,7 @@ func (a *Ames) handleConn() {
 func (a *Ames) ParsePacket(pkt []byte) (Packet, *Connection, error) {
 	from, to, fromTick, toTick, content, err := DecodePacket(pkt)
 	if err != nil {
+		fmt.Println("error: ParsePacketA ", err)
 		return Packet{}, &Connection{}, err
 	}
 
@@ -333,6 +343,11 @@ func (a *Ames) ParsePacket(pkt []byte) (Packet, *Connection, error) {
 			return Packet{}, &Connection{}, err
 		}
 		path, mark, data, err := DestructPoke(msg)
+		if err != nil {
+			fmt.Println("ERR at destructPoke in parsepacket", err)
+		} else {
+			fmt.Println("new packet: ", data)
+		}
 		packet := Packet{
 			Path: path,
 			Mark: mark,

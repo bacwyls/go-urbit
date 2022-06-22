@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 	"math/bits"
+	"strconv"
+	"unicode"
 )
 
 type MatTupl [2]*big.Int
@@ -110,6 +112,8 @@ func Mat(arg *big.Int) MatTupl {
 		return MatTupl{B(1), B(1)}
 	}
 	b := int64(arg.BitLen())
+	fmt.Println("MAT arg: ", arg)
+	fmt.Println("MAT arg bitlen: ", b)
 	c := int64(len(fmt.Sprintf("%b", b)))
 	tup1 := B(b + c + c)
 
@@ -220,9 +224,12 @@ func jamIn(nmap nounMap, n Noun, index int64) (int64, *big.Int) {
 				if t.Value.BitLen() < bits.Len64(uint64(pIndex)) {
 					d := Mat(t.Value)
 					return 1 + d[0].Int64(), B(0).Lsh(d[1], 1)
+				} else {
+					fmt.Println("atom ignored: ", n)
 				}
 			}
 		}
+		fmt.Println("seen this noun b4: ", n)
 
 		d1 := Mat(B(pIndex))
 		d2 := B(0).Lsh(d1[1], 2)
@@ -334,4 +341,121 @@ func Slag(n Noun, pos int) Noun {
 		i++
 	}
 	return cur
+}
+
+// nock operator /
+// get the noun at position a of n
+func Fas(a uint64, n Noun) Noun {
+	if a == 1 {
+		return n
+	}
+	if a == 2 {
+		return Head(n)
+	}
+	if a == 3 {
+		return Tail(n)
+	}
+	if a%2 == 0 {
+		return Fas(2, Fas(a/2, n))
+	}
+	if a%2 == 1 {
+		return Fas(3, Fas((a-1)/2, n))
+	}
+	// This won't happen
+	return MakeNoun(0)
+}
+
+// nock operator #
+// replace the noun at position a of c with b
+func Hax(a uint64, b Noun, c Noun) Noun {
+	if a == 1 {
+		return b
+	}
+	if a%2 == 0 {
+		return Hax(a/2, MakeNoun([]interface{}{b, Fas(a+1, c)}), c)
+	}
+	if a%2 == 1 {
+		return Hax((a-1)/2, MakeNoun([]interface{}{Fas(a-1, c), b}), c)
+	}
+	// This won't happen
+	return MakeNoun(0)
+}
+
+func IsStrAtom(str string) bool {
+	for _, c := range str {
+		if !unicode.IsDigit(c) {
+			return false
+		}
+	}
+	return true
+}
+
+// is this string noun an explicit cell?
+// explicit: begins and ends with [ and ] respectively
+//           and has valid inner brackets
+func IsStrXCell(str string) bool {
+	if str[0] != '[' {
+		return false
+	}
+
+	brax := 0
+	for i, c := range str {
+		if c == '[' {
+			brax += 1
+		}
+		if c == ']' {
+			brax -= 1
+		}
+
+		if brax == 0 {
+			return i == len(str)-1
+		}
+	}
+	return false
+}
+
+// return split index
+func SplitStrCell(str string) int {
+	brax := 0
+	for i, c := range str {
+		if c == '[' {
+			brax += 1
+		}
+		if c == ']' {
+			brax -= 1
+		}
+		if c == ' ' && brax == 0 {
+			return i
+		}
+	}
+
+	// TODO error here
+	return -99
+}
+
+func NounFromString(str string) Noun {
+	if IsStrAtom(str) {
+		i, err := strconv.ParseInt(str, 10, 64)
+		if err != nil {
+			bi := B(0)
+			bi, ok := bi.SetString(str, 10)
+			if !ok {
+				fmt.Println("SetString: error")
+				panic(err)
+			}
+			return MakeNoun(bi)
+		}
+		return MakeNoun(i)
+	}
+
+	if IsStrXCell(str) {
+		str = str[1 : len(str)-1]
+	}
+
+	split := SplitStrCell(str)
+
+	headRes := NounFromString(str[:split])
+	tailRes := NounFromString(str[split+1:])
+	res := MakeNoun([]interface{}{headRes, tailRes})
+	return res
 }

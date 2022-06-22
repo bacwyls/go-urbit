@@ -3,8 +3,10 @@ package ames
 import (
 	"bytes"
 	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -111,6 +113,7 @@ func SplitMessage(num int, blob noun.Noun) []noun.Noun {
 		n := noun.MakeNoun([]interface{}{num, l, i, noun.Cut(int64(i<<13), 1<<13, a)})
 		acc = append(acc, n)
 	}
+	fmt.Println("---------- splitting a message into pieces: ", len(acc))
 	return acc
 }
 
@@ -184,6 +187,7 @@ func EncodeShutPacket(pkt noun.Noun, symKey []byte, from *big.Int, to *big.Int, 
 		noun.BigToLittle(noun.B(toLife)),
 	}
 	jPkt := noun.Jam(pkt)
+	fmt.Println("  jPkt: ", jPkt)
 	kHash := sha512.Sum512(symKey)
 	err, ivs, cypherText := urcrypt.UrcryptAESSivcEn(jPkt, aVec, kHash)
 	if err != nil {
@@ -345,6 +349,7 @@ func DecodeShutPacket(content *big.Int, symKey []byte, from, to, fromTick, toTic
 func DecodePacket(pkt []byte) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
 	header := pkt[:4]
 	body := pkt[4:]
+	fmt.Printf("Decoding pkt:\n header: %s\n body: %s\n", hex.EncodeToString(header), hex.EncodeToString(body))
 
 	var checksum uint32
 
@@ -360,13 +365,11 @@ func DecodePacket(pkt []byte) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int,
 
 	lBody := LittleToBig(body)
 	if isRelay {
-		lBody.Rsh(lBody, uint(6))
+		lBody.Rsh(lBody, uint(48))
 	}
 	nBody := noun.MakeNoun(lBody)
 
-	if Mug(nBody)&0xfffff != checksum {
-		return B(0), B(0), B(0), B(0), B(0), errors.New("error: checksum does not match")
-	}
+	fmt.Printf("    pkt Header {isAmes:%b, version:%b, senderRank:%b, receiverRank:%b, checksum:%x, isrelay:%b}\n", isAmes, version, senderRank, receiverRank, checksum, isRelay)
 
 	senderSize := DecodeShipMetadata(senderRank)
 	receiverSize := DecodeShipMetadata(receiverRank)
@@ -378,6 +381,17 @@ func DecodePacket(pkt []byte) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int,
 
 	content := B(0)
 	content.Rsh(lBody, uint(8+senderSize+receiverSize))
+
+	// fmt.Printf("    from:%x", senderValue)
+	fmt.Printf("    pkt Body {senderValue:%d, receiverValue:%d, senderTick:%d, receiverTick:%d, senderSize:%d, receiverSize:%d}\n", senderValue, receiverValue, senderTick, receiverTick, senderSize, receiverSize)
+	fmt.Printf("          pkt content: %x\n", content)
+
+	if Mug(nBody)&0xfffff != checksum {
+		fmt.Println("error: checksum does not match!")
+		return B(0), B(0), B(0), B(0), B(0), errors.New("error: checksum does not match")
+	} else {
+		fmt.Println("    checksum is correct :)")
+	}
 
 	return senderValue, receiverValue, senderTick, receiverTick, content, nil
 }
